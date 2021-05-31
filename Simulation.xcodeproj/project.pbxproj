@@ -11,11 +11,11 @@
 		8E778CF9265C546C00195D77 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E778CF8265C546C00195D77 /* ContentView.swift */; };
 		8E778CFB265C546E00195D77 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E778CFA265C546E00195D77 /* Assets.xcassets */; };
 		8E778CFE265C546E00195D77 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E778CFD265C546E00195D77 /* Preview Assets.xcassets */; };
-		8E778D07265C548D00195D77 /* SliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E778D06265C548D00195D77 /* SliderView.swift */; };
 		8E778D09265C5A2800195D77 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E778D08265C5A2800195D77 /* MetalView.swift */; };
 		8E778D0B265C5B3B00195D77 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E778D0A265C5B3B00195D77 /* Renderer.swift */; };
 		8E778D0F265C5EAD00195D77 /* shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 8E778D0E265C5EAD00195D77 /* shaders.metal */; };
 		8E778D11265C5EF900195D77 /* SwiftUIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E778D10265C5EF900195D77 /* SwiftUIView.swift */; };
+		8ECA26D6266545E40091846A /* Common.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ECA26D5266545E40091846A /* Common.swift */; };
 		8EE20112265CFCB40015E323 /* Emitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE20111265CFCB40015E323 /* Emitter.swift */; };
 /* End PBXBuildFile section */
 
@@ -27,11 +27,11 @@
 		8E778CFD265C546E00195D77 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		8E778CFF265C546E00195D77 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8E778D00265C546E00195D77 /* Simulation.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Simulation.entitlements; sourceTree = "<group>"; };
-		8E778D06265C548D00195D77 /* SliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SliderView.swift; sourceTree = "<group>"; };
 		8E778D08265C5A2800195D77 /* MetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalView.swift; sourceTree = "<group>"; };
 		8E778D0A265C5B3B00195D77 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		8E778D0E265C5EAD00195D77 /* shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = shaders.metal; sourceTree = "<group>"; };
 		8E778D10265C5EF900195D77 /* SwiftUIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIView.swift; sourceTree = "<group>"; };
+		8ECA26D5266545E40091846A /* Common.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Common.swift; sourceTree = "<group>"; };
 		8EE20111265CFCB40015E323 /* Emitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Emitter.swift; sourceTree = "<group>"; };
 		8EE20113265CFCE90015E323 /* Common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -68,10 +68,10 @@
 			children = (
 				8E778CF6265C546C00195D77 /* SimulationApp.swift */,
 				8E778CF8265C546C00195D77 /* ContentView.swift */,
-				8E778D06265C548D00195D77 /* SliderView.swift */,
 				8E778D08265C5A2800195D77 /* MetalView.swift */,
 				8E778D10265C5EF900195D77 /* SwiftUIView.swift */,
 				8EE20113265CFCE90015E323 /* Common.h */,
+				8ECA26D5266545E40091846A /* Common.swift */,
 				8E778D0A265C5B3B00195D77 /* Renderer.swift */,
 				8EE20111265CFCB40015E323 /* Emitter.swift */,
 				8E778D0E265C5EAD00195D77 /* shaders.metal */,
@@ -160,10 +160,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8ECA26D6266545E40091846A /* Common.swift in Sources */,
 				8E778D09265C5A2800195D77 /* MetalView.swift in Sources */,
 				8E778D11265C5EF900195D77 /* SwiftUIView.swift in Sources */,
 				8EE20112265CFCB40015E323 /* Emitter.swift in Sources */,
-				8E778D07265C548D00195D77 /* SliderView.swift in Sources */,
 				8E778D0F265C5EAD00195D77 /* shaders.metal in Sources */,
 				8E778CF9265C546C00195D77 /* ContentView.swift in Sources */,
 				8E778D0B265C5B3B00195D77 /* Renderer.swift in Sources */,

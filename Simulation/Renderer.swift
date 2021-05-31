@@ -1,6 +1,7 @@
 import MetalKit
+import SwiftUI
 
-class Renderer: NSObject {
+class Renderer: NSObject, ObservableObject {
     var device: MTLDevice
     var commandQueue: MTLCommandQueue!
     var resetAntsPipelineState: MTLComputePipelineState!
@@ -11,7 +12,7 @@ class Renderer: NSObject {
     var particleCount = 100000
     var currentTime: Float = 0
     
-    var antVariables: AntVariables = {
+    @Published var antVariables: AntVariables = {
         var variables = AntVariables()
         variables.moveSpeed = 2
         variables.turnSpeed = 0.1
@@ -22,7 +23,7 @@ class Renderer: NSObject {
         return variables
     }()
     
-    var trailVariables: TrailVariables = {
+    @Published var trailVariables: TrailVariables = {
         var variables = TrailVariables()
         variables.diffuseRate = 0.2
         variables.decayRate = 0.003
