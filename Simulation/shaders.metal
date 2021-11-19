@@ -7,6 +7,28 @@ struct Ant {
     float angle;
 };
 
+float rand(int x, int y, int z)
+{
+    int seed = x + y * 57 + z * 241;
+    seed= (seed<< 13) ^ seed;
+    return (( 1.0 - ( (seed * (seed * seed * 15731 + 789221) + 1376312589) & 2147483647) / 1073741824.0f) + 1.0f) / 2.0f;
+}
+
+kernel void generateAnts(uint id [[ thread_position_in_grid ]],
+                             device Ant *ants [[ buffer(BufferIndexParticleBuffer) ]],
+                             constant ParticleUniforms &uniforms [[ buffer(BufferIndexAntsUniforms) ]])
+{
+    device Ant &ant = ants[id];
+    
+    float distance = uniforms.height / 4;
+    float angle = rand(id, id + id % 13, id + id % 5) * 2 * M_PI_F;
+    float x = cos(angle) * distance + uniforms.width / 2;
+    float y = sin(angle) * distance + uniforms.height / 2;
+    
+    ant.angle = angle;
+    ant.position = float2(x, y);
+}
+
 //constant float moveSpeed = 2;
 //constant float turnSpeed = 0.1; //0...1
 //constant int sensorSize = 3;
@@ -66,13 +88,13 @@ float sense(Ant ant, float sensorAngleOffset, texture2d<half, access::read> trai
     return sum;
 }
 
-kernel void resetAnts(texture2d<half, access::write> output [[ texture(AntsTexture) ]],
+kernel void resetAnts(texture2d<half, access::write> output [[ texture(TextureIndexAnts) ]],
                       uint2 id [[ thread_position_in_grid ]]) {
     output.write(half4(0.0), id);
 }
 
-kernel void decay(texture2d<half, access::read> inputTrail [[ texture(PreviousTrailsTexture) ]],
-                  texture2d<half, access::write> outputTrail [[ texture(CurrentTrailsTexture) ]],
+kernel void decay(texture2d<half, access::read> inputTrail [[ texture(TextureIndexPreviousTrails) ]],
+                  texture2d<half, access::write> outputTrail [[ texture(TextureIndexCurrentTrails) ]],
                   constant TrailVariables &trailVariables [[ buffer(BufferIndexTrailVariables) ]],
                   uint2 id [[ thread_position_in_grid ]]) {
     // 3x3 blur
@@ -95,9 +117,9 @@ kernel void decay(texture2d<half, access::read> inputTrail [[ texture(PreviousTr
     outputTrail.write(color, id);
 }
 
-kernel void combine(texture2d<half, access::write> output [[ texture(DrawableTexture) ]],
-                    texture2d<half, access::read> ants [[ texture(AntsTexture) ]],
-                    texture2d<half, access::read> trail [[ texture(CurrentTrailsTexture) ]],
+kernel void combine(texture2d<half, access::write> output [[ texture(TextureIndexDrawable) ]],
+                    texture2d<half, access::read> ants [[ texture(TextureIndexAnts) ]],
+                    texture2d<half, access::read> trail [[ texture(TextureIndexCurrentTrails) ]],
                     uint2 id [[ thread_position_in_grid ]]) {
     half4 antColor = ants.read(id);
     half4 trailColor = trail.read(id);
@@ -107,13 +129,12 @@ kernel void combine(texture2d<half, access::write> output [[ texture(DrawableTex
 }
 
 kernel void updateAntsAndTrail(
-    texture2d<half, access::write> antsOutput [[ texture(AntsTexture) ]],
-    texture2d<half, access::write> trail [[ texture(CurrentTrailsTexture) ]],
-    texture2d<half, access::read> previousTrail [[ texture(PreviousTrailsTexture) ]],
+    texture2d<half, access::write> antsOutput [[ texture(TextureIndexAnts) ]],
+    texture2d<half, access::write> trail [[ texture(TextureIndexCurrentTrails) ]],
+    texture2d<half, access::read> previousTrail [[ texture(TextureIndexPreviousTrails) ]],
     constant AntVariables &antVariables [[ buffer(BufferIndexAntVariables) ]],
-    device Ant *ants [[ buffer(0) ]],
-    constant uint& particleCount [[ buffer(1) ]],
-    constant uint& time [[ buffer(2) ]],
+    device Ant *ants [[ buffer(BufferIndexParticleBuffer) ]],
+    constant uint& time [[ buffer(BufferIndexCurrentTime) ]],
     uint id [[ thread_position_in_grid ]]
 ) {
     Ant ant;

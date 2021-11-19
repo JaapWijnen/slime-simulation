@@ -4,16 +4,17 @@ import SwiftUI
 class Renderer: NSObject, ObservableObject {
     var device: MTLDevice
     var commandQueue: MTLCommandQueue!
+    var library: MTLLibrary!
     var resetAntsPipelineState: MTLComputePipelineState!
     var updateAntsAndTrailPipelineState: MTLComputePipelineState!
     var decayPipelineState: MTLComputePipelineState!
     var combinePipelineState: MTLComputePipelineState!
     var emitter: Emitter!
-    var particleCount = 100000
     var currentTime: Float = 0
     
     @Published var antVariables: AntVariables = {
         var variables = AntVariables()
+        variables.count = 1000000
         variables.moveSpeed = 2
         variables.turnSpeed = 0.1
         variables.sensorSize = 3
@@ -47,16 +48,17 @@ class Renderer: NSObject, ObservableObject {
         self.commandQueue = device.makeCommandQueue()!
         super.init()
         
-        emitter = Emitter(particleCount: particleCount, size: mtkView.drawableSize, device: device)
-        
         createPipelineStates()
+        emitter = Emitter(particleCount: Int(antVariables.count), size: mtkView.drawableSize, device: device, library: library, commandQueue: commandQueue)
+        
+        
         
         buildTextures(size: mtkView.bounds.size)
     }
     
     //MARK: Builders
     func createPipelineStates() {
-        let library = device.makeDefaultLibrary()
+        self.library = device.makeDefaultLibrary()
         
         do {
             guard let resetAnts = library?.makeFunction(name: "resetAnts") else { return }
@@ -110,7 +112,7 @@ class Renderer: NSObject, ObservableObject {
         }
         
         commandEncoder.setComputePipelineState(resetAntsPipelineState)
-        commandEncoder.setTexture(texture, index: Int(AntsTexture.rawValue))
+        commandEncoder.setTexture(texture, index: TextureIndex.ants.rawValue)
         let width = resetAntsPipelineState.threadExecutionWidth
         let height = resetAntsPipelineState.maxTotalThreadsPerThreadgroup / width
         let threadsPerGroup = MTLSizeMake(width, height, 1)
@@ -131,75 +133,14 @@ extension Renderer: MTKViewDelegate {
     
     func drawableSizeWillChange(to size: CGSize) {
         print("resizing \(size)")
-        emitter = Emitter(particleCount: particleCount, size: size, device: device)
+        emitter.update(size: size, device: device, commandQueue: commandQueue)
         buildTextures(size: size)
     }
     
-    func resetAntsPass(view: MTKView, commandEncoder: MTLComputeCommandEncoder) {
-        commandEncoder.setComputePipelineState(resetAntsPipelineState)
-        let width = resetAntsPipelineState.threadExecutionWidth
-        let height = resetAntsPipelineState.maxTotalThreadsPerThreadgroup / width
-        let threadsPerGroup = MTLSizeMake(width, height, 1)
-        let threadsPerGrid = MTLSizeMake(
-            Int(view.drawableSize.width),
-            Int(view.drawableSize.height),
-            1
-        )
-        commandEncoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
-    }
-    
-    func decayPass(view: MTKView, commandEncoder: MTLComputeCommandEncoder) {
-        commandEncoder.setComputePipelineState(decayPipelineState)
-        commandEncoder.setBytes(&trailVariables,
-                                length: MemoryLayout<TrailVariables>.stride,
-                                index: Int(BufferIndexTrailVariables.rawValue))
-        let width = decayPipelineState.threadExecutionWidth
-        let height = decayPipelineState.maxTotalThreadsPerThreadgroup / width
-        let threadsPerGroup = MTLSizeMake(width, height, 1)
-        let textureWidth = currentTrailTexture.width
-        let textureHeight = currentTrailTexture.height
-        let threadsPerGrid = MTLSizeMake(textureWidth, textureHeight, 1)
-
-        commandEncoder.dispatchThreads(threadsPerGrid,
-                                       threadsPerThreadgroup: threadsPerGroup)
-    }
-    
-    func updateAntsAndTrailsPass(view: MTKView, commandEncoder: MTLComputeCommandEncoder) {
-        commandEncoder.setComputePipelineState(updateAntsAndTrailPipelineState)
-        let threadsPerGroup = MTLSizeMake(1, 1, 1)
-        let threadsPerGrid = MTLSizeMake(particleCount, 1, 1)
-        commandEncoder.setBuffer(emitter.particleBuffer,
-                                 offset: 0,
-                                 index: 0)
-        commandEncoder.setBytes(&particleCount,
-                                length: MemoryLayout<Int>.stride,
-                                index: 1)
-        commandEncoder.setBytes(&antVariables,
-                                length: MemoryLayout<AntVariables>.stride,
-                                index: Int(BufferIndexAntVariables.rawValue))
-        commandEncoder.setBytes(&currentTime,
-                                length: MemoryLayout<Float>.stride,
-                                index: 2)
-        commandEncoder.dispatchThreads(threadsPerGrid,
-                                       threadsPerThreadgroup: threadsPerGroup)
-    }
-    
-    func combinePass(view: MTKView, commandEncoder: MTLComputeCommandEncoder, drawable: CAMetalDrawable) {
-        commandEncoder.setComputePipelineState(combinePipelineState)
-        let width = decayPipelineState.threadExecutionWidth
-        let height = decayPipelineState.maxTotalThreadsPerThreadgroup / width
-        let threadsPerGroup = MTLSizeMake(width, height, 1)
-        let textureWidth = drawable.texture.width
-        let textureHeight = drawable.texture.height
-        let threadsPerGrid = MTLSizeMake(textureWidth, textureHeight, 1)
-        commandEncoder.dispatchThreads(threadsPerGrid,
-                                       threadsPerThreadgroup: threadsPerGroup)
-    }
-    
     func draw(in view: MTKView) {
-        guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let commandEncoder = commandBuffer.makeComputeCommandEncoder(),
-              let drawable = view.currentDrawable else { return }
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        
+        
         
         let deltaTime: Float = 1 / Float(view.preferredFramesPerSecond)
         currentTime += deltaTime
@@ -208,22 +149,69 @@ extension Renderer: MTKViewDelegate {
         //antVariables.moveSpeed = 3 * sin(currentTime + 0.1) + 0.1
         //print(antVariables.moveSpeed)
         
-        commandEncoder.setTexture(drawable.texture, index: Int(DrawableTexture.rawValue))
-        commandEncoder.setTexture(antsTexture, index: Int(AntsTexture.rawValue))
-        commandEncoder.setTexture(currentTrailTexture, index: Int(CurrentTrailsTexture.rawValue))
-        commandEncoder.setTexture(previousTrailTexture, index: Int(PreviousTrailsTexture.rawValue))
+        var commandEncoder = commandBuffer.makeComputeCommandEncoder()
         
-        resetAntsPass(view: view, commandEncoder: commandEncoder)
+        // reset ants pass
+        commandEncoder?.setComputePipelineState(resetAntsPipelineState)
+        commandEncoder?.setTexture(antsTexture, index: TextureIndex.ants.rawValue)
         
-        decayPass(view: view, commandEncoder: commandEncoder)
+        var width = resetAntsPipelineState.threadExecutionWidth
+        var height = resetAntsPipelineState.maxTotalThreadsPerThreadgroup / width
+        var threadsPerGroup = MTLSizeMake(width, height, 1)
+        var threadsPerGrid = MTLSizeMake(Int(view.drawableSize.width), Int(view.drawableSize.height), 1)
+        commandEncoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        commandEncoder?.endEncoding()
         
-        updateAntsAndTrailsPass(view: view, commandEncoder: commandEncoder)
+        // decay pass
+        commandEncoder = commandBuffer.makeComputeCommandEncoder()
+        commandEncoder?.setComputePipelineState(decayPipelineState)
+        commandEncoder?.setBytes(&trailVariables, length: MemoryLayout<TrailVariables>.stride, index: BufferIndex.trailVariables.rawValue)
+        commandEncoder?.setTexture(currentTrailTexture, index: TextureIndex.currentTrails.rawValue)
+        commandEncoder?.setTexture(previousTrailTexture, index: TextureIndex.previousTrails.rawValue)
         
-        combinePass(view: view, commandEncoder: commandEncoder, drawable: drawable)
+        width = decayPipelineState.threadExecutionWidth
+        height = decayPipelineState.maxTotalThreadsPerThreadgroup / width
+        threadsPerGroup = MTLSizeMake(width, height, 1)
+        var textureWidth = currentTrailTexture.width
+        var textureHeight = currentTrailTexture.height
+        threadsPerGrid = MTLSizeMake(textureWidth, textureHeight, 1)
+        commandEncoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        commandEncoder?.endEncoding()
         
+        // update ants and trails pass
+        commandEncoder = commandBuffer.makeComputeCommandEncoder()
+        commandEncoder?.setComputePipelineState(updateAntsAndTrailPipelineState)
+        commandEncoder?.setBuffer(emitter.particleBuffer, offset: 0, index: BufferIndex.particleBuffer.rawValue)
+        commandEncoder?.setBytes(&antVariables, length: MemoryLayout<AntVariables>.stride, index: BufferIndex.antVariables.rawValue)
+        commandEncoder?.setBytes(&currentTime, length: MemoryLayout<Float>.stride, index: BufferIndex.currentTime.rawValue)
+        commandEncoder?.setTexture(currentTrailTexture, index: TextureIndex.currentTrails.rawValue)
+        commandEncoder?.setTexture(previousTrailTexture, index: TextureIndex.previousTrails.rawValue)
+        commandEncoder?.setTexture(antsTexture, index: TextureIndex.ants.rawValue)
+        
+        threadsPerGroup = MTLSizeMake(updateAntsAndTrailPipelineState.threadExecutionWidth, 1, 1)
+        threadsPerGrid = MTLSizeMake(Int(antVariables.count), 1, 1)
+        commandEncoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        commandEncoder?.endEncoding()
+                
+        guard let drawable = view.currentDrawable else { return }
+        
+        // combine pass
+        commandEncoder = commandBuffer.makeComputeCommandEncoder()
+        commandEncoder?.setComputePipelineState(combinePipelineState)
+        commandEncoder?.setTexture(drawable.texture, index: TextureIndex.drawable.rawValue)
+        commandEncoder?.setTexture(currentTrailTexture, index: TextureIndex.currentTrails.rawValue)
+        commandEncoder?.setTexture(antsTexture, index: TextureIndex.ants.rawValue)
+        width = decayPipelineState.threadExecutionWidth
+        height = decayPipelineState.maxTotalThreadsPerThreadgroup / width
+        threadsPerGroup = MTLSizeMake(width, height, 1)
+        textureWidth = drawable.texture.width
+        textureHeight = drawable.texture.height
+        threadsPerGrid = MTLSizeMake(textureWidth, textureHeight, 1)
+        commandEncoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+                
         trailTextureIndex += 1
+        commandEncoder?.endEncoding()
         
-        commandEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }

@@ -16,4 +16,13 @@ extension AntVariables {
             sensorSize = Int32(newValue)
         }
     }
+    
+    var countFloat: Float {
+        get {
+            Float(count)
+        }
+        set {
+            count = Int32(newValue)
+        }
+    }
 }
